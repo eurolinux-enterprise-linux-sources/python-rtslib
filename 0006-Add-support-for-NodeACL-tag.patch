@@ -1,0 +1,55 @@
+From 5ef8db6334c9702fd485d8bd64a3f8886124b39a Mon Sep 17 00:00:00 2001
+From: Andy Grover <agrover@redhat.com>
+Date: Thu, 20 Dec 2012 10:14:30 -0800
+Subject: [PATCH] Add support for NodeACL tag
+
+A new attribute, which is going to be used to aggregate node acls in
+targetcli. Not present in older kernels so handle its absence gracefully.
+
+Signed-off-by: Andy Grover <agrover@redhat.com>
+---
+ rtslib/target.py | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/rtslib/target.py b/rtslib/target.py
+index ca91643..be613a0 100644
+--- a/rtslib/target.py
++++ b/rtslib/target.py
+@@ -791,6 +791,19 @@ class NodeACL(CFSNode):
+             msg = msg[1]
+             raise RTSLibError("Cannot set tcq_depth: %s" % str(msg))
+ 
++    def _get_tag(self):
++        self._check_self()
++        try:
++            return fread("%s/tag" % self.path).strip()
++        except IOError:
++            return None
++
++    def _set_tag(self, tag_str):
++        try:
++            fwrite("%s/tag" % self.path, tag_str)
++        except IOError:
++            pass
++
+     def _get_authenticate_target(self):
+         self._check_self()
+         path = "%s/auth/authenticate_target" % self.path
+@@ -876,6 +889,8 @@ class NodeACL(CFSNode):
+     tcq_depth = property(_get_tcq_depth, _set_tcq_depth,
+                          doc="Set or get the TCQ depth for the initiator " \
+                          + "sessions matching this NodeACL.")
++    tag = property(_get_tag, _set_tag,
++            doc="Set or get the NodeACL tag. If not supported, return None")
+     parent_tpg = property(_get_parent_tpg,
+             doc="Get the parent TPG object.")
+     node_wwn = property(_get_node_wwn,
+@@ -896,6 +911,8 @@ class NodeACL(CFSNode):
+                     d["chap_" + attr] = val
+         d['node_wwn'] = self.node_wwn
+         d['mapped_luns'] = [lun.dump() for lun in self.mapped_luns]
++        if self.tag:
++            d['tag'] = self.tag
+         return d
+ 
+ 

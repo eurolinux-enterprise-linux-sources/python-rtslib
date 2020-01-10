@@ -1,10 +1,11 @@
-commit 1aafb8044310deaaef4f3e13bb3dc84adc2eaabb
-Author: Andy Grover <agrover@redhat.com>
-Date:   Fri Mar 1 10:06:12 2013 -0800
+From c128ffb9f901cb14b0d36ee8470d0e18727ac520 Mon Sep 17 00:00:00 2001
+From: Andy Grover <agrover@redhat.com>
+Date: Tue, 4 Jun 2013 22:34:48 -0700
+Subject: [PATCH] fix-exception-in-pscsi-backstore
 
-    Fix exception in pscsi backstore
-    
-    Signed-off-by: Andy Grover <agrover@redhat.com>
+---
+ rtslib/tcm.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/rtslib/tcm.py b/rtslib/tcm.py
 index 9a8e201..62bd7bb 100644

@@ -5,13 +5,17 @@ License:        AGPLv3
 Group:          System Environment/Libraries
 Summary:        API for RisingTide Systems generic SCSI target
 Version:        2.1.fb21
-Release:        3%{?dist}
+Release:        4%{?dist}
 URL:            https://github.com/agrover/rtslib-fb/
 Source:         https://github.com/downloads/agrover/%{oname}/%{oname}-%{version}.tar.gz
-Patch0:         %{name}-del-unused-specs.patch
-Patch1:         %{name}-fix-exception-in-pscsi-backstore.patch
-Patch2:         %{name}-fix-pscsi-1.patch
-Patch3:         %{name}-fix-pscsi-2.patch
+Patch0:         0001-del-unused-specs.patch
+Patch1:         0002-fix-exception-in-pscsi-backstore.patch
+Patch2:         0003-Fix-dumping-of-PSCSI-storage-objects.patch
+Patch3:         0004-pscsi-Save-udev_path-instead-of-h-c-t-l.patch
+Patch4:         0005-fix-colonize.patch
+Patch5:         0006-Add-support-for-NodeACL-tag.patch
+Patch6:         0007-Fix-up-tag-save-restore.patch
+
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 BuildRequires:  python-ipaddr python-ethtool python-devel
@@ -26,6 +30,9 @@ API for generic Linux SCSI target.
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
+%patch4 -p1
+%patch5 -p1
+%patch6 -p1
 
 %build
 %{__python} setup.py build
@@ -47,10 +54,17 @@ rm -rf %{buildroot}
 %doc COPYING README
 
 %changelog
-* Tue Jun 4 2013 Andy Grover <agrover@redhat.com> - 2.1.fb21-3
+* Tue Jan 19 2016 Andy Grover <agrover@redhat.com> - 2.1.fb21-4
+- Rebuild with greater revision number
+
+* Mon Jan 18 2016 Andy Grover <agrover@redhat.com> - 2.1.fb21-3
 - Add patches:
-  * fix-pscsi-1.patch
-  * fix-pscsi-2.patch
+    0003-Fix-dumping-of-PSCSI-storage-objects.patch
+    0004-pscsi-Save-udev_path-instead-of-h-c-t-l.patch
+    0005-fix-colonize.patch
+    0006-Add-support-for-NodeACL-tag.patch
+    0007-Fix-up-tag-save-restore.patch
+- Rename existing patches to match naming scheme
 
 * Fri Mar 1 2013 Andy Grover <agrover@redhat.com> - 2.1.fb21-2
 - Add patch fix-exception-in-pscsi-backstore.patch

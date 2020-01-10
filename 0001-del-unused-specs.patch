@@ -1,10 +1,20 @@
-commit a06344dd7f831686e3a60536c100ee0742a97370
-Author: Andy Grover <agrover@redhat.com>
-Date:   Tue Aug 7 14:41:25 2012 -0700
+From caa4dbd3c4a74122c163edd11d8f5b90b2b49902 Mon Sep 17 00:00:00 2001
+From: Andy Grover <agrover@redhat.com>
+Date: Tue, 4 Jun 2013 22:34:15 -0700
+Subject: [PATCH] del-unused-specs
 
-    remove unsupported specs
-    
-    Signed-off-by: Andy Grover <agrover@redhat.com>
+---
+ specs/ib_srpt.spec    | 32 --------------------------------
+ specs/iscsi.spec      | 29 -----------------------------
+ specs/qla2xxx.spec    | 26 --------------------------
+ specs/sbp.spec        | 21 ---------------------
+ specs/usb_gadget.spec | 21 ---------------------
+ 5 files changed, 129 deletions(-)
+ delete mode 100644 specs/ib_srpt.spec
+ delete mode 100644 specs/iscsi.spec
+ delete mode 100644 specs/qla2xxx.spec
+ delete mode 100644 specs/sbp.spec
+ delete mode 100644 specs/usb_gadget.spec
 
 diff --git a/specs/ib_srpt.spec b/specs/ib_srpt.spec
 deleted file mode 100644

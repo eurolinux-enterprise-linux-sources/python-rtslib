@@ -1,0 +1,27 @@
+From addb6e055b50056b9c801f748ea7e4939a26eb2c Mon Sep 17 00:00:00 2001
+From: Andy Grover <agrover@redhat.com>
+Date: Wed, 3 Jul 2013 10:51:00 -0700
+Subject: [PATCH] fix-colonize
+
+---
+ rtslib/target.py | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/rtslib/target.py b/rtslib/target.py
+index 0bea3e9..ca91643 100644
+--- a/rtslib/target.py
++++ b/rtslib/target.py
+@@ -96,11 +96,8 @@ class FabricModule(CFSNode):
+             '''
+             helper function for the specfiles to add colons every 2 chars
+             '''
+-            new_str = ""
+-            while str:
+-                new_str += str[:2] + ":"
+-                str = str[2:]
+-            return new_str[:-1]
++            str = str.strip()
++            return ":".join(str[i:i+2] for i in range(0, len(str), 2))
+ 
+         specfile_funcs = dict(glob=glob.iglob, fread=fread, colonize=colonize)
+ 

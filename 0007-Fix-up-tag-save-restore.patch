@@ -1,0 +1,46 @@
+From b7fcc29551ef9d51b53e2b0c6ec47655cccc69d3 Mon Sep 17 00:00:00 2001
+From: Andy Grover <agrover@redhat.com>
+Date: Mon, 18 Jan 2016 17:28:41 -0800
+Subject: [PATCH] Fix up tag save/restore
+
+Fix up tag accessor methods.
+
+Signed-off-by: Andy Grover <agrover@redhat.com>
+---
+ rtslib/target.py | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/rtslib/target.py b/rtslib/target.py
+index be613a0..d26a6e5 100644
+--- a/rtslib/target.py
++++ b/rtslib/target.py
+@@ -794,13 +794,19 @@ class NodeACL(CFSNode):
+     def _get_tag(self):
+         self._check_self()
+         try:
+-            return fread("%s/tag" % self.path).strip()
++            tag = fread("%s/tag" % self.path)
++            if tag:
++                return tag
++            return None
+         except IOError:
+             return None
+ 
+     def _set_tag(self, tag_str):
+         try:
+-            fwrite("%s/tag" % self.path, tag_str)
++            if tag_str is None:
++                fwrite("%s/tag" % self.path, 'NULL')
++            else:
++                fwrite("%s/tag" % self.path, tag_str)
+         except IOError:
+             pass
+ 
+@@ -1394,6 +1400,7 @@ class Target(CFSNode):
+                         try:
+                             mlun_obj = MappedLUN(acl_obj, mlun['index'],
+                                                  tpg_lun_obj, mlun.get('write_protect'))
++                            mlun_obj.tag = mlun.get("tag", None)
+                         except (RTSLibError, KeyError):
+                             errors += 1
+                             continue
