@@ -1,16 +1,14 @@
-commit f62302769b8fed100ea9ca94ceb909ae72c1ce69
+commit a06344dd7f831686e3a60536c100ee0742a97370
 Author: Andy Grover <agrover@redhat.com>
-Date:   Sun Jul 31 16:06:48 2011 -0700
+Date:   Tue Aug 7 14:41:25 2012 -0700
 
-    remove unused fabric specs
-    
-    Once these are supported, we will want to put them back in place.
+    remove unsupported specs
     
     Signed-off-by: Andy Grover <agrover@redhat.com>
 
 diff --git a/specs/ib_srpt.spec b/specs/ib_srpt.spec
 deleted file mode 100644
-index e42eec9..0000000
+index da80581..0000000
 --- a/specs/ib_srpt.spec
 +++ /dev/null
 @@ -1,32 +0,0 @@
@@ -32,23 +30,23 @@ index e42eec9..0000000
 -# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -
 -# The fabric module feature set
--features = acls
+-features = ("acls",)
 -
 -# Non-standard module naming scheme
--kernel_module = ib_srpt
+-kernel_module = "ib_srpt"
 -
--# The module uses hardware addresses from there
--wwn_from_files = /sys/class/infiniband/*/ports/*/gids/0
 -# Transform 'fe80:0000:0000:0000:0002:1903:000e:8acd' WWN notation to
--# '0x00000000000000000002c903000e8acd'
--wwn_from_files_filter = "sed -e s/fe80/0x0000/ -e 's/\://g'"
+-# '0xfe8000000000000000021903000e8acd'
+-def wwns():
+-  for wwn_file in glob("/sys/class/infiniband/*/ports/*/gids/0"):
+-      yield "0x" + fread(wwn_file).strip(":")
 -
 -# The configfs group
--configfs_group = srpt
+-configfs_group = "srpt"
 -
 diff --git a/specs/iscsi.spec b/specs/iscsi.spec
 deleted file mode 100644
-index dd03319..0000000
+index 94657b6..0000000
 --- a/specs/iscsi.spec
 +++ /dev/null
 @@ -1,29 +0,0 @@
@@ -70,10 +68,10 @@ index dd03319..0000000
 -# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -
 -# The iscsi fabric module features set.
--features = discovery_auth, acls, acls_auth, nps, tpgts
+-features = ("discovery_auth", "acls", "acls_auth", "nps", "tpgts")
 -
 -# Obviously, this module uses IQN strings as WWNs.
--wwn_type = iqn
+-wwn_type = "iqn"
 -
 -# This is default too
 -# kernel_module = iscsi_target_mod
@@ -83,10 +81,10 @@ index dd03319..0000000
 -
 diff --git a/specs/qla2xxx.spec b/specs/qla2xxx.spec
 deleted file mode 100644
-index d47dcfa..0000000
+index afb15ff..0000000
 --- a/specs/qla2xxx.spec
 +++ /dev/null
-@@ -1,28 +0,0 @@
+@@ -1,26 +0,0 @@
 -# The qla2xxx fabric module specfile.
 -#
 -# This file is part of RTSLib Community Edition.
@@ -105,13 +103,65 @@ index d47dcfa..0000000
 -# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -
 -# The qla2xxx fabric module feature set
--features = acls
+-features = ("acls",)
 -
 -# Non-standard module naming scheme
--kernel_module = tcm_qla2xxx
+-kernel_module = "tcm_qla2xxx"
 -
--# The module uses hardware addresses from there
--wwn_from_files = /sys/class/fc_host/host*/port_name
+-def wwns():
+-    for wwn_file in glob("/sys/class/fc_host/host*/port_name"):
+-        yield colonize(fread(wwn_file)[2:])
+diff --git a/specs/sbp.spec b/specs/sbp.spec
+deleted file mode 100644
+index ccabec3..0000000
+--- a/specs/sbp.spec
++++ /dev/null
+@@ -1,21 +0,0 @@
+-# See README for details on this file's format
 -
--# Transform '0x1234567812345678' WWN notation to '12:34:56:78:12:34:56:78'
--wwn_from_files_filter = "sed -e s/0x// -e 's/../&:/g' -e s/:$//"
+-# The fabric module feature set
+-features = ()
+-
+-# Non-standard module naming scheme
+-kernel_module = "sbp_target"
+-
+-# We need a single unique value to create the target.
+-# Return the first local 1394 device's guid.
+-def wwns():
+-    import os
+-    for fname in glob("/sys/bus/firewire/devices/fw*/is_local"):
+-        if bool(int(fread(fname))):
+-            guid_path = os.path.dirname(fname) + "/guid"
+-            yield fread(guid_path)[2:]
+-            break
+-
+-# The configfs group
+-configfs_group = "sbp"
+-
+diff --git a/specs/usb_gadget.spec b/specs/usb_gadget.spec
+deleted file mode 100644
+index 94f82bf..0000000
+--- a/specs/usb_gadget.spec
++++ /dev/null
+@@ -1,21 +0,0 @@
+-# The USB-gadget fabric module specification
+-#
+-# This file is part of RTSLib Community Edition.
+-# Copyright (c) 2011 by RisingTide Systems LLC
+-#
+-# This program is free software: you can redistribute it and/or modify
+-# it under the terms of the GNU Affero General Public License as
+-# published by the Free Software Foundation, version 3 (AGPLv3).
+-#
+-# This program is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU Affero General Public License for more details.
+-#
+-# You should have received a copy of the GNU Affero General Public License
+-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-
+-features = ("nexus",)
+-wwn_type = "naa"
+-kernel_module = "tcm_usb_gadget"
+-configfs_group = "usb_gadget"
