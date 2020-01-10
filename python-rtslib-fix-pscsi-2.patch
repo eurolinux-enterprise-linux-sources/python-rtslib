@@ -1,0 +1,29 @@
+commit b3d11ccff7580b4329620afd4bf26441aaa000f8
+Author: Andy Grover <agrover@redhat.com>
+Date:   Mon Jan 7 12:05:30 2013 -0800
+
+    pscsi: Save udev_path instead of h:c:t:l
+    
+    Both of hctl and /dev/sdX are bad for saving paths, since changes in
+    device enumeration ordering or udev may result in a name referring to a
+    different device. We should be using vpd83 or serial# or some other
+    immutable device id. Until we can do that, use the lesser of two evils;
+    removing/reinserting a drive may not even result in the same h:c:t:l, but
+    at least it will get the same sdX.
+    
+    Signed-off-by: Andy Grover <agrover@redhat.com>
+
+diff --git a/rtslib/tcm.py b/rtslib/tcm.py
+index 80da710..80ef9c3 100644
+--- a/rtslib/tcm.py
++++ b/rtslib/tcm.py
+@@ -365,8 +365,7 @@ class PSCSIStorageObject(StorageObject):
+ 
+     def dump(self):
+         d = super(PSCSIStorageObject, self).dump()
+-        d['dev'] = "%s:%s:%s:%s" % (self.host_id, self.channel_id,
+-                                    self.target_id, self.lun)
++        d['dev'] = self.udev_path
+         return d
+ 
+ 

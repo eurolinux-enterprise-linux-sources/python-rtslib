@@ -5,10 +5,13 @@ License:        AGPLv3
 Group:          System Environment/Libraries
 Summary:        API for RisingTide Systems generic SCSI target
 Version:        2.1.fb21
-Release:        1%{?dist}
+Release:        3%{?dist}
 URL:            https://github.com/agrover/rtslib-fb/
 Source:         https://github.com/downloads/agrover/%{oname}/%{oname}-%{version}.tar.gz
 Patch0:         %{name}-del-unused-specs.patch
+Patch1:         %{name}-fix-exception-in-pscsi-backstore.patch
+Patch2:         %{name}-fix-pscsi-1.patch
+Patch3:         %{name}-fix-pscsi-2.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 BuildRequires:  python-ipaddr python-ethtool python-devel
@@ -20,6 +23,9 @@ API for generic Linux SCSI target.
 %prep
 %setup -q -n %{oname}-%{version}
 %patch0 -p1
+%patch1 -p1
+%patch2 -p1
+%patch3 -p1
 
 %build
 %{__python} setup.py build
@@ -41,6 +47,14 @@ rm -rf %{buildroot}
 %doc COPYING README
 
 %changelog
+* Tue Jun 4 2013 Andy Grover <agrover@redhat.com> - 2.1.fb21-3
+- Add patches:
+  * fix-pscsi-1.patch
+  * fix-pscsi-2.patch
+
+* Fri Mar 1 2013 Andy Grover <agrover@redhat.com> - 2.1.fb21-2
+- Add patch fix-exception-in-pscsi-backstore.patch
+
 * Wed Aug 8 2012 Andy Grover <agrover@redhat.com> - 2.1.fb21-1
 - Update for new upstream version
 

@@ -1,0 +1,64 @@
+commit 928cb0bf6cb622f4498e623c4f57de132e5d5bcc
+Author: Andy Grover <agrover@redhat.com>
+Date:   Fri Jan 4 23:47:33 2013 -0800
+
+    Fix dumping of PSCSI storage objects
+    
+    Wow, I guess this has never worked?
+    
+    Add dump method, so PSCSI dev will be saved.
+    
+    Unlike all others, PSCSI doesn't want wwn. Move wwn to subclass dump()
+    methods, from superclass.
+    
+    Signed-off-by: Andy Grover <agrover@redhat.com>
+
+diff --git a/rtslib/tcm.py b/rtslib/tcm.py
+index 62bd7bb..80da710 100644
+--- a/rtslib/tcm.py
++++ b/rtslib/tcm.py
+@@ -225,7 +225,6 @@ class StorageObject(CFSNode):
+     def dump(self):
+         d = super(StorageObject, self).dump()
+         d['name'] = self.name
+-        d['wwn'] = self.wwn
+         d['plugin'] = self.plugin
+         return d
+ 
+@@ -364,6 +363,12 @@ class PSCSIStorageObject(StorageObject):
+     lun = property(_get_lun,
+             doc="Get the SCSI device LUN")
+ 
++    def dump(self):
++        d = super(PSCSIStorageObject, self).dump()
++        d['dev'] = "%s:%s:%s:%s" % (self.host_id, self.channel_id,
++                                    self.target_id, self.lun)
++        return d
++
+ 
+ class RDMCPStorageObject(StorageObject):
+     '''
+@@ -454,6 +459,7 @@ class RDMCPStorageObject(StorageObject):
+ 
+     def dump(self):
+         d = super(RDMCPStorageObject, self).dump()
++        d['wwn'] = self.wwn
+         d['size'] = self.size
+         return d
+ 
+@@ -588,6 +594,7 @@ class FileIOStorageObject(StorageObject):
+     def dump(self):
+         d = super(FileIOStorageObject, self).dump()
+         d['write_back'] = self.write_back
++        d['wwn'] = self.wwn
+         d['dev'] = self.udev_path
+         d['size'] = self.size
+         return d
+@@ -691,6 +698,7 @@ class BlockStorageObject(StorageObject):
+         d = super(BlockStorageObject, self).dump()
+         d['write_back'] = self.write_back
+         d['readonly'] = self.readonly
++        d['wwn'] = self.wwn
+         d['dev'] = self.udev_path
+         return d
+ 
