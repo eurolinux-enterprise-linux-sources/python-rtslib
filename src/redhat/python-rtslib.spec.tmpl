@@ -1,0 +1,55 @@
+%define oname rtslib
+
+Name:           python-rtslib
+License:        AGPLv3
+Group:          System Environment/Libraries
+Summary:        A framework to implement simple but nice CLIs.
+Version:        VERSION
+Release:        1%{?dist}
+URL:            http://www.risingtidesystems.com/git/
+Source:         %{oname}-%{version}.tar.gz
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-rpmroot
+BuildArch:      noarch
+BuildRequires:  python-devel
+Requires:       python-configobj, python-netifaces, python-ipaddr
+Vendor:         RisingTide Systems
+
+%description
+API for RisingTide Systems generic SCSI target.
+
+%package doc
+Summary:       PDF and HTML API reference for python-rtslib.
+Group:         Documentation
+BuildRequires: epydoc
+
+%description doc
+PDF and HTML API reference for python-rtslib.
+
+%prep
+%setup -q -n %{oname}-%{version}
+
+%build
+%{__python} setup.py build
+
+%install
+rm -rf %{buildroot}
+%{__python} setup.py install --skip-build --root %{buildroot}
+mkdir -p %{buildroot}/var/target/fabric
+cp specs/* %{buildroot}/var/target/fabric
+mkdir -p %{buildroot}/usr/share/doc/python-rtslib-doc-%{version}
+cp -r doc/* %{buildroot}/usr/share/doc/python-rtslib-doc-%{version}/
+
+%clean
+rm -rf %{buildroot}
+
+%files
+%defattr(-,root,root,-)
+%{python_sitelib}
+/var/target
+%doc COPYING README
+
+%files doc
+%defattr(-,root,root,-)
+/usr/share/doc/python-rtslib-doc-%{version}
+
+%changelog
