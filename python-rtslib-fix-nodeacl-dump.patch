@@ -1,0 +1,38 @@
+From 1c18eeccf42bf17689c21c3cfea079895997b204 Mon Sep 17 00:00:00 2001
+From: Andy Grover <agrover@redhat.com>
+Date: Thu, 19 Apr 2012 13:03:50 -0700
+Subject: [PATCH] Fix NodeACL dump() for non-iscsi fabrics
+
+tcq_depth is iscsi=specific, remove.
+
+reading chap auth values will fail for non-iscsi fabrics.
+
+Signed-off-by: Andy Grover <agrover@redhat.com>
+---
+ rtslib/target.py |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/rtslib/target.py b/rtslib/target.py
+index d48c52c..80d8491 100644
+--- a/rtslib/target.py
++++ b/rtslib/target.py
+@@ -932,11 +932,11 @@ class NodeACL(CFSNode):
+ 
+     def dump(self):
+         d = super(NodeACL, self).dump()
+-        for attr in ("userid", "password", "mutual_userid", "mutual_password"):
+-            val = getattr(self, "chap_" + attr, None)
+-            if val:
+-                d["chap_" + attr] = val
+-        d['tcq_depth'] = int(self.tcq_depth)
++        if self.has_feature("acls_auth"):
++            for attr in ("userid", "password", "mutual_userid", "mutual_password"):
++                val = getattr(self, "chap_" + attr, None)
++                if val:
++                    d["chap_" + attr] = val
+         d['node_wwn'] = self.node_wwn
+         d['mapped_luns'] = [lun.dump() for lun in self.mapped_luns]
+         return d
+-- 
+1.7.1
+
