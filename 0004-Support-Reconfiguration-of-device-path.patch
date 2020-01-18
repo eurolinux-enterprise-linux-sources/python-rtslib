@@ -1,0 +1,55 @@
+From 2a816d67e95ac0edc6d56076595b29eddfeb433b Mon Sep 17 00:00:00 2001
+From: "Bryant G. Ly" <bryantly@linux.vnet.ibm.com>
+Date: Thu, 1 Jun 2017 13:11:37 -0500
+Subject: [PATCH] Support Reconfiguration of device path
+
+This patch allows users to pass in a string into the
+attributes. Prior it would throw:
+
+Traceback (most recent call last):
+File "/usr/bin/targetcli", line 121, in <module>
+  main()
+File "/usr/bin/targetcli", line 117, in main
+  root_node.ui_command_saveconfig()
+File "/usr/lib/python3/dist-packages/targetcli/ui_root.py", line 98, in ui_command_saveconfig
+  self.rtsroot.save_to_file(savefile)
+File "/usr/lib/python3/dist-packages/rtslib_fb/root.py", line 270, in save_to_file
+  f.write(json.dumps(self.dump(), sort_keys=True, indent=2))
+File "/usr/lib/python3/dist-packages/rtslib_fb/root.py", line 160, in dump
+  d['storage_objects'] = [so.dump() for so in self.storage_objects]
+File "/usr/lib/python3/dist-packages/rtslib_fb/root.py", line 160, in <listcomp>
+  d['storage_objects'] = [so.dump() for so in self.storage_objects]
+File "/usr/lib/python3/dist-packages/rtslib_fb/tcm.py", line 850, in dump
+  d = super(UserBackedStorageObject, self).dump()
+File "/usr/lib/python3/dist-packages/rtslib_fb/tcm.py", line 294, in dump
+  d = super(StorageObject, self).dump()
+File "/usr/lib/python3/dist-packages/rtslib_fb/node.py", line 217, in dump
+  attrs[item] = int(self.get_attribute(item))
+ValueError: invalid literal for int() with base 10: 'file//home/neo/test.raw'
+
+This error is due to set attribute dev_path being a non integer.
+
+Signed-off-by: Bryant G. Ly <bryantly@linux.vnet.ibm.com>
+---
+ rtslib/node.py | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/rtslib/node.py b/rtslib/node.py
+index c319a5b..c0092fc 100644
+--- a/rtslib/node.py
++++ b/rtslib/node.py
+@@ -214,7 +214,10 @@ class CFSNode(object):
+         attrs = {}
+         params = {}
+         for item in self.list_attributes(writable=True):
+-            attrs[item] = int(self.get_attribute(item))
++            try:
++                attrs[item] = int(self.get_attribute(item))
++            except ValueError:
++                attrs[item] = self.get_attribute(item)
+         if attrs:
+             d['attributes'] = attrs
+         for item in self.list_parameters(writable=True):
+-- 
+1.8.3.1
+

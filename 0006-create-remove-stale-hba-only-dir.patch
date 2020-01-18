@@ -1,0 +1,54 @@
+From f06103354394ffa86817696a37edb7ddd351bc10 Mon Sep 17 00:00:00 2001
+From: Prasanna Kumar Kalever <prasanna.kalever@redhat.com>
+Date: Fri, 9 Feb 2018 17:20:26 +0530
+Subject: [PATCH] create: remove stale hba-only dir
+
+curretly if there exist any stale hba-only directories,
+
+$ ls /sys/kernel/config/target/core/user_0/
+hba_info  hba_mode
+
+Then backend creation fails,
+
+$ targetcli /backstores/fileio create block file 1M
+This _Backstore already exists in configFS
+
+We will have to restart target.service or restore the configuration
+again to clear the stale hba-only dirs.
+
+This patch checks for hba directory before creating one,
+if it is already existing and found to be stale then removes it.
+
+Thanks to "Maurizio Lombardi <mlombard@redhat.com>" for debugging along
+
+Signed-off-by: Prasanna Kumar Kalever <prasanna.kalever@redhat.com>
+---
+ rtslib/node.py | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/rtslib/node.py b/rtslib/node.py
+index c0092fc..1d77cd1 100644
+--- a/rtslib/node.py
++++ b/rtslib/node.py
+@@ -52,9 +52,16 @@ class CFSNode(object):
+         '''
+         if mode not in ['any', 'lookup', 'create']:
+             raise RTSLibError("Invalid mode: %s" % mode)
++
+         if self.exists and mode == 'create':
+-            raise RTSLibError("This %s already exists in configFS"
+-                              % self.__class__.__name__)
++            # ensure that self.path is not stale hba-only dir
++            if os.path.samefile(os.path.dirname(self.path), self.configfs_dir+'/core') \
++               and not next(os.walk(self.path))[1]:
++                os.rmdir(self.path)
++            else:
++               raise RTSLibError("This %s already exists in configFS"
++                                 % self.__class__.__name__)
++
+         elif not self.exists and mode == 'lookup':
+             raise RTSLibNotInCFS("No such %s in configfs: %s"
+                                  % (self.__class__.__name__, self.path))
+-- 
+1.8.3.1
+

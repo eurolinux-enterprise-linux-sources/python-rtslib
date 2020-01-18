@@ -1,0 +1,39 @@
+From 1dccdd8f1415c7fe63fb59044618435a09619e45 Mon Sep 17 00:00:00 2001
+From: Prasanna Kumar Kalever <prasanna.kalever@redhat.com>
+Date: Tue, 24 Apr 2018 16:33:36 +0530
+Subject: [PATCH] saveconfig: fix failure in absence of save file
+
+$ ls /etc/target/
+backup
+
+$ targetcli /backstores/user:glfs/testX saveconfig
+[Errno 2] No such file or directory: '/etc/target/saveconfig.json'
+
+Signed-off-by: Prasanna Kumar Kalever <prasanna.kalever@redhat.com>
+---
+ rtslib/root.py | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/rtslib/root.py b/rtslib/root.py
+index 913d8ea..d5a6e43 100644
+--- a/rtslib/root.py
++++ b/rtslib/root.py
+@@ -184,9 +184,12 @@ class RTSRoot(CFSNode):
+         '''
+         current = self.dump()
+ 
+-        with open(save_file, "r") as f:
+-            saveconf = json.loads(f.read())
+-            f.close()
++        if not os.path.exists(save_file):
++            saveconf = {'storage_objects': [], 'targets': []}
++        else:
++            with open(save_file, "r") as f:
++                saveconf = json.loads(f.read())
++                f.close()
+ 
+         fetch_cur_so = False
+         fetch_cur_tg = False
+-- 
+1.8.3.1
+

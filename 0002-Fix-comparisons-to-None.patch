@@ -1,0 +1,29 @@
+From 32d8b8ef61a3786ff409bdba7f74ab53987f04c1 Mon Sep 17 00:00:00 2001
+From: Andy Grover <agrover@redhat.com>
+Date: Wed, 28 Oct 2015 09:28:29 -0700
+Subject: [PATCH] Fix comparisons to None
+
+see https://bugzilla.redhat.com/show_bug.cgi?id=1276044
+
+Signed-off-by: Andy Grover <agrover@redhat.com>
+---
+ rtslib/node.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/rtslib/node.py b/rtslib/node.py
+index c319a5b..e61249d 100644
+--- a/rtslib/node.py
++++ b/rtslib/node.py
+@@ -34,10 +34,10 @@ class CFSNode(object):
+         self._path = self.configfs_dir
+ 
+     def __eq__(self, other):
+-        return self._path == other._path
++        return isinstance(other, self.__class__) and self._path == other._path
+ 
+     def __ne__(self, other):
+-        return self._path != other._path
++        return not self.__eq__(other)
+ 
+     def _get_path(self):
+         return self._path

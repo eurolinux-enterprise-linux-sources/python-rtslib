@@ -1,0 +1,25 @@
+From e6b267ec3712b5d13c352c6090dffbd0144ed028 Mon Sep 17 00:00:00 2001
+From: Andy Grover <agrover@redhat.com>
+Date: Wed, 17 May 2017 09:37:59 -0700
+Subject: [PATCH] Fix exception in convert_scsi_hctl_to_path
+
+Convert integers to string before using them with .join().
+
+Signed-off-by: Andy Grover <agrover@redhat.com>
+---
+ rtslib/utils.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/rtslib/utils.py b/rtslib/utils.py
+index 1a5315e..eeb1f6c 100644
+--- a/rtslib/utils.py
++++ b/rtslib/utils.py
+@@ -294,7 +294,7 @@ def convert_scsi_hctl_to_path(host, controller, target, lun):
+         raise RTSLibError(
+             "The host, controller, target and lun parameter must be integers")
+ 
+-    hctl = [host, controller, target, lun]
++    hctl = [str(host), str(controller), str(target), str(lun)]
+     try:
+         scsi_device = pyudev.Device.from_name(_CONTEXT, 'scsi', ':'.join(hctl))
+     except pyudev.DeviceNotFoundError:
