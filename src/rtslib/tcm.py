@@ -32,6 +32,19 @@ from .utils import convert_scsi_path_to_hctl, convert_scsi_hctl_to_path
 from .utils import is_dev_in_use, get_blockdev_type
 from .utils import get_size_for_blk_dev, get_size_for_disk_name
 
+def storage_object_get_alua_support_attr(so):
+    '''
+    Helper function that can be called by passthrough type of backends.
+    '''
+    try:
+        if int(so.get_attribute("alua_support")) == 1:
+            return True
+    except RTSLibError:
+            pass
+    # Default to false because older kernels will crash when
+    # reading/writing to some ALUA files when ALUA was not
+    # fully supported by pscsi and tcmu.
+    return False
 
 class StorageObject(CFSNode):
     '''
@@ -78,7 +91,8 @@ class StorageObject(CFSNode):
         need to read it in and squirt it back into configfs when we configure
         the storage object. BLEH.
         """
-        aptpl_dir = "/var/target/pr"
+        from .root import RTSRoot
+        aptpl_dir = "%s/pr" % RTSRoot().dbroot
 
         try:
             lines = fread("%s/aptpl_%s" % (aptpl_dir, self.wwn)).split()
@@ -170,8 +184,11 @@ class StorageObject(CFSNode):
     def _parse_info(self, key):
         self._check_self()
         info = fread("%s/info" % self.path)
-        return re.search(".*%s: ([^: ]+).*" \
-                         % key, ' '.join(info.split())).group(1)
+        try:
+            return re.search(".*%s: ([^: ]+).*" \
+                             % key, ' '.join(info.split())).group(1)
+        except AttributeError:
+            return None
 
     def _get_status(self):
         self._check_self()
@@ -227,14 +244,14 @@ class StorageObject(CFSNode):
 
     def _get_alua_supported(self):
         '''
-        Children should override and return false if ALUA setup is not supported.
+        Children should override if the backend did not always support ALUA
         '''
         self._check_self()
         return True
 
     # StorageObject public stuff
 
-    def delete(self):
+    def delete(self, save=False):
         '''
         Recursively deletes a StorageObject object.
         This will delete all attached LUNs currently using the StorageObject
@@ -257,6 +274,9 @@ class StorageObject(CFSNode):
 
         super(StorageObject, self).delete()
         self._backstore.delete()
+        if save:
+            from .root import RTSRoot, default_save_file
+            RTSRoot().save_to_file(default_save_file, '/backstores/' + self.plugin  + '/' + self._name)
 
     def is_configured(self):
         '''
@@ -420,7 +440,7 @@ class PSCSIStorageObject(StorageObject):
 
     def _get_alua_supported(self):
         self._check_self()
-        return False
+        return storage_object_get_alua_support_attr(self)
 
     # PSCSIStorageObject public stuff
 
@@ -442,7 +462,7 @@ class PSCSIStorageObject(StorageObject):
     lun = property(_get_lun,
             doc="Get the SCSI device LUN")
     alua_supported = property(_get_alua_supported,
-            doc="ALUA cannot be setup with rtslib, so False is returned.");
+            doc="Returns true if ALUA can be setup. False if not supported.")
 
     def dump(self):
         d = super(PSCSIStorageObject, self).dump()
@@ -555,7 +575,7 @@ class FileIOStorageObject(StorageObject):
     # FileIOStorageObject private stuff
 
     def __init__(self, name, dev=None, size=None,
-                 wwn=None, write_back=False):
+                 wwn=None, write_back=False, aio=False):
         '''
         A FileIOStorageObject can be instantiated in two ways:
             - B{Creation mode}: If I{dev} and I{size} are specified, the
@@ -589,14 +609,14 @@ class FileIOStorageObject(StorageObject):
         if dev is not None:
             super(FileIOStorageObject, self).__init__(name, 'create')
             try:
-                self._configure(dev, size, wwn, write_back)
+                self._configure(dev, size, wwn, write_back, aio)
             except:
                 self.delete()
                 raise
         else:
             super(FileIOStorageObject, self).__init__(name, 'lookup')
 
-    def _configure(self, dev, size, wwn, write_back):
+    def _configure(self, dev, size, wwn, write_back, aio):
         self._check_self()
         block_type = get_blockdev_type(dev)
         if block_type is None: # a file
@@ -624,6 +644,9 @@ class FileIOStorageObject(StorageObject):
             self.set_attribute("emulate_write_cache", 1)
             self._control("fd_buffered_io=%d" % write_back)
 
+        if aio:
+            self._control("fd_async_io=%d" % aio)
+
         self._set_udev_path(dev)
 
         self._enable()
@@ -646,6 +669,15 @@ class FileIOStorageObject(StorageObject):
     def _is_block(self):
         return get_blockdev_type(self.udev_path) is not None
 
+    def _aio(self):
+        self._check_self()
+        info = fread("%s/info" % self.path)
+        r = re.search(".*Async: ([^: ]+).*", ' '.join(info.split()))
+        if not r:  # for backward compatibility with old kernels
+            return False
+
+        return bool(int(r.group(1)))
+
     # FileIOStorageObject public stuff
 
     write_back = property(_get_wb_enabled,
@@ -654,6 +686,8 @@ class FileIOStorageObject(StorageObject):
             doc="Get the current FileIOStorage size in bytes")
     is_block = property(_is_block,
             doc="True if FileIoStorage is backed by a block device instead of a file")
+    aio = property(_aio,
+            doc="True if asynchronous I/O is enabled")
 
     def dump(self):
         d = super(FileIOStorageObject, self).dump()
@@ -661,6 +695,7 @@ class FileIOStorageObject(StorageObject):
         d['wwn'] = self.wwn
         d['dev'] = self.udev_path
         d['size'] = self.size
+        d['aio'] = self.aio
         return d
 
 
@@ -772,7 +807,8 @@ class UserBackedStorageObject(StorageObject):
     An interface to configFS storage objects for userspace-backed backstore.
     '''
 
-    def __init__(self, name, config=None, size=None, wwn=None):
+    def __init__(self, name, config=None, size=None, wwn=None,
+                 hw_max_sectors=None, control=None):
         '''
         @param name: The name of the UserBackedStorageObject.
         @type name: string
@@ -783,6 +819,11 @@ class UserBackedStorageObject(StorageObject):
         @type size: int
         @param wwn: T10 WWN Unit Serial, will generate if None
         @type wwn: string
+        @hw_max_sectors: Max sectors per command limit to export to initiators.
+        @type hw_max_sectors: int
+        @control: String of control=value tuples separate by a ',' that will
+            passed to the kernel control file.
+        @type: string
         @return: A UserBackedStorageObject object.
         '''
 
@@ -795,20 +836,24 @@ class UserBackedStorageObject(StorageObject):
                                   "from its configuration string")
             super(UserBackedStorageObject, self).__init__(name, 'create')
             try:
-                self._configure(config, size, wwn)
+                self._configure(config, size, wwn, hw_max_sectors, control)
             except:
                 self.delete()
                 raise
         else:
             super(UserBackedStorageObject, self).__init__(name, 'lookup')
 
-    def _configure(self, config, size, wwn):
+    def _configure(self, config, size, wwn, hw_max_sectors, control):
         self._check_self()
 
         if ':' in config:
             raise RTSLibError("':' not allowed in config string")
         self._control("dev_config=%s" % config)
         self._control("dev_size=%d" % size)
+        if hw_max_sectors is not None:
+            self._control("hw_max_sectors=%s" % hw_max_sectors)
+        if control is not None:
+            self._control(control)
         self._enable()
 
         super(UserBackedStorageObject, self)._configure(wwn)
@@ -816,6 +861,21 @@ class UserBackedStorageObject(StorageObject):
     def _get_size(self):
         self._check_self()
         return int(self._parse_info('Size'))
+
+    def _get_hw_max_sectors(self):
+        self._check_self()
+        return int(self._parse_info('HwMaxSectors'))
+
+    def _get_control_tuples(self):
+        self._check_self()
+        tuples = []
+        # 1. max_data_area_mb
+        val = self._parse_info('MaxDataAreaMB')
+        if val != "NULL":
+            tuples.append("max_data_area_mb=%s" % val)
+        # 2. add next ...
+
+        return ",".join(tuples)
 
     def _get_config(self):
         self._check_self()
@@ -826,20 +886,27 @@ class UserBackedStorageObject(StorageObject):
 
     def _get_alua_supported(self):
         self._check_self()
-        return False
+        return storage_object_get_alua_support_attr(self)
 
+    hw_max_sectors = property(_get_hw_max_sectors,
+            doc="Get the max sectors per command.")
+    control_tuples = property(_get_control_tuples,
+            doc="Get the comma separated string containing control=value tuples.")
     size = property(_get_size,
             doc="Get the size in bytes.")
     config = property(_get_config,
             doc="Get the TCMU config.")
     alua_supported = property(_get_alua_supported,
-            doc="ALUA cannot be setup with rtslib, so False is returned.");
+            doc="Returns true if ALUA can be setup. False if not supported.")
 
     def dump(self):
         d = super(UserBackedStorageObject, self).dump()
         d['wwn'] = self.wwn
         d['size'] = self.size
         d['config'] = self.config
+        d['hw_max_sectors'] = self.hw_max_sectors
+        d['control'] = self.control_tuples
+
         return d
 
 
@@ -948,8 +1015,11 @@ class _Backstore(CFSNode):
     def _parse_info(self, key):
         self._check_self()
         info = fread("%s/hba_info" % self.path)
-        return re.search(".*%s: ([^: ]+).*" \
-                         % key, ' '.join(info.split())).group(1)
+        try:
+            return re.search(".*%s: ([^: ]+).*" \
+                             % key, ' '.join(info.split())).group(1)
+        except AttributeError:
+            return None
 
     def _get_version(self):
         self._check_self()

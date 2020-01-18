@@ -149,7 +149,7 @@ def get_size_for_blk_dev(path):
     @raises: DeviceNotFoundError if corresponding device not found
     @raises: EnvironmentError, ValueError in some situations
     '''
-    device = Device.from_device_file(_CONTEXT, os.path.realpath(str(path)))
+    device = pyudev.Device.from_device_file(_CONTEXT, os.path.realpath(str(path)))
     return _get_size_for_dev(device)
 
 get_block_size = get_size_for_blk_dev
@@ -294,7 +294,7 @@ def convert_scsi_hctl_to_path(host, controller, target, lun):
         raise RTSLibError(
             "The host, controller, target and lun parameter must be integers")
 
-    hctl = [host, controller, target, lun]
+    hctl = [str(host), str(controller), str(target), str(lun)]
     try:
         scsi_device = pyudev.Device.from_name(_CONTEXT, 'scsi', ':'.join(hctl))
     except pyudev.DeviceNotFoundError:
@@ -326,7 +326,7 @@ def generate_wwn(wwn_type):
     if wwn_type == 'unit_serial':
         return str(uuid.uuid4())
     elif wwn_type == 'iqn':
-        localname = socket.gethostname().split(".")[0]
+        localname = socket.gethostname().split(".")[0].replace("_", "")
         localarch = os.uname()[4].replace("_", "")
         prefix = "iqn.2003-01.org.linux-iscsi.%s.%s" % (localname, localarch)
         prefix = prefix.strip().lower()
@@ -378,12 +378,12 @@ def normalize_wwn(wwn_types, wwn):
     wwn_test = {
     'free': lambda wwn: True,
     'iqn': lambda wwn: \
-        re.match("iqn\.[0-9]{4}-[0-1][0-9]\..*\..*", wwn) \
+        re.match(r"iqn\.[0-9]{4}-[0-1][0-9]\..*\..*", wwn) \
         and not re.search(' ', wwn) \
         and not re.search('_', wwn),
-    'naa': lambda wwn: re.match("naa\.[125][0-9a-fA-F]{15}$", wwn),
-    'eui': lambda wwn: re.match("eui\.[0-9a-f]{16}$", wwn),
-    'ib': lambda wwn: re.match("ib\.[0-9a-f]{32}$", wwn),
+    'naa': lambda wwn: re.match(r"naa\.[125][0-9a-fA-F]{15}$", wwn),
+    'eui': lambda wwn: re.match(r"eui\.[0-9a-f]{16}$", wwn),
+    'ib': lambda wwn: re.match(r"ib\.[0-9a-f]{32}$", wwn),
     'unit_serial': lambda wwn: \
         re.match("[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$", wwn),
     }

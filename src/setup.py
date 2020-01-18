@@ -20,7 +20,7 @@ from setuptools import setup
 
 setup (
     name = 'rtslib-fb',
-    version = '2.1.63',
+    version = '2.1.69',
     description = 'API for Linux kernel SCSI target (aka LIO)',
     license = 'Apache 2.0',
     maintainer = 'Andy Grover',
@@ -28,7 +28,10 @@ setup (
     url = 'http://github.com/open-iscsi/rtslib-fb',
     packages = ['rtslib_fb', 'rtslib'],
     scripts = ['scripts/targetctl'],
-    install_requires = ['pyudev >= 0.16.1'],
+    install_requires = [
+        'pyudev >= 0.16.1',
+        'six',
+    ],
     classifiers = [
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",

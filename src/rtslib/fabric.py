@@ -118,8 +118,8 @@ from .utils import RTSLibError, modprobe, ignored
 from .target import Target
 from .utils import _get_auth_attr, _set_auth_attr
 
-version_attributes = {"lio_version", "version"}
-discovery_auth_attributes = {"discovery_auth"}
+version_attributes = set(["lio_version", "version"])
+discovery_auth_attributes = set(["discovery_auth"])
 target_names_excludes = version_attributes | discovery_auth_attributes
 
 
@@ -440,7 +440,7 @@ class VhostFabricModule(_BaseFabricModule):
 
 class XenPvScsiFabricModule(_BaseFabricModule):
     def __init__(self):
-        super(XenPvScsiFabricModule, self).__init__('xen_pvscsi')
+        super(XenPvScsiFabricModule, self).__init__('xen-pvscsi')
         self._path = "%s/%s" % (self.configfs_dir, 'xen-pvscsi')
         self.features = ("nexus", "tpgts")
         self.wwn_types = ('naa',)
@@ -469,7 +469,7 @@ fabric_modules = {
     "tcm_fc": FCoEFabricModule,
 #    "usb_gadget": USBGadgetFabricModule, # very rare, don't show
     "vhost": VhostFabricModule,
-    "xen_pvscsi": XenPvScsiFabricModule,
+    "xen-pvscsi": XenPvScsiFabricModule,
     "ibmvscsis": IbmvscsisFabricModule,
     }
 

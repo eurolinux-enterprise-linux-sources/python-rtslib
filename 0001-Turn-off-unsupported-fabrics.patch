@@ -1,15 +1,5 @@
-From 60b9fc9c9baf2f05e5021c8b27e173733ea62ea5 Mon Sep 17 00:00:00 2001
-From: Andy Grover <agrover@redhat.com>
-Date: Mon, 7 Oct 2013 15:32:27 -0700
-Subject: [PATCH] Turn off unsupported fabrics
-
-Signed-off-by: Andy Grover <agrover@redhat.com>
----
- rtslib/fabric.py | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
-
 diff --git a/rtslib/fabric.py b/rtslib/fabric.py
-index 2887783..a44aa7e 100644
+index b529f14..8264c37 100644
 --- a/rtslib/fabric.py
 +++ b/rtslib/fabric.py
 @@ -465,12 +465,12 @@ fabric_modules = {
@@ -21,10 +11,10 @@ index 2887783..a44aa7e 100644
      "tcm_fc": FCoEFabricModule,
  #    "usb_gadget": USBGadgetFabricModule, # very rare, don't show
 -    "vhost": VhostFabricModule,
--    "xen_pvscsi": XenPvScsiFabricModule,
+-    "xen-pvscsi": XenPvScsiFabricModule,
 -    "ibmvscsis": IbmvscsisFabricModule,
 +#    "vhost": VhostFabricModule,
-+#    "xen_pvscsi": XenPvScsiFabricModule,
++#    "xen-pvscsi": XenPvScsiFabricModule,
 +#    "ibmvscsis": IbmvscsisFabricModule,
      }
  

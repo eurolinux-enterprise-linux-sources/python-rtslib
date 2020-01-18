@@ -21,6 +21,8 @@ under the License.
 import os
 import stat
 import json
+import glob
+import errno
 
 from .node import CFSNode
 from .target import Target
@@ -28,6 +30,7 @@ from .fabric import FabricModule
 from .tcm import so_mapping, bs_cache, StorageObject
 from .utils import RTSLibError, RTSLibALUANotSupported, modprobe, mount_configfs
 from .utils import dict_remove, set_attributes
+from .utils import fread, fwrite
 from .alua import ALUATargetPortGroup
 
 default_save_file = "/etc/target/saveconfig.json"
@@ -57,6 +60,12 @@ class RTSRoot(CFSNode):
     '''
 
     # RTSRoot private stuff
+
+    # this should match the kernel target driver default db dir
+    _default_dbroot = "/var/target"
+    # this is where the target DB is to be located (instead of the default)
+    _preferred_dbroot = "/etc/target"
+
     def __init__(self):
         '''
         Instantiate an RTSRoot object. Basically checks for configfs setup and
@@ -74,6 +83,8 @@ class RTSRoot(CFSNode):
         except RTSLibError:
             modprobe('target_core_mod')
             self._create_in_cfs_ine('any')
+
+        self._set_dbroot_if_needed()
 
     def _list_targets(self):
         self._check_self()
@@ -148,6 +159,106 @@ class RTSRoot(CFSNode):
     def __str__(self):
         return "rtslib"
 
+    def _set_dbroot_if_needed(self):
+        dbroot_path = self.path + "/dbroot"
+        if not os.path.exists(dbroot_path):
+            self._dbroot = self._default_dbroot
+            return
+        self._dbroot = fread(dbroot_path)
+        if self._dbroot != self._preferred_dbroot:
+            try:
+                fwrite(dbroot_path, self._preferred_dbroot+"\n")
+            except:
+                if not os.path.isdir(self._preferred_dbroot):
+                    raise RTSLibError("Cannot set dbroot to {}. Please check if this directory exists."
+                                      .format(self._preferred_dbroot))
+            self._dbroot = fread(dbroot_path)
+
+    def _get_dbroot(self):
+        return self._dbroot
+
+    def _get_saveconf(self, so_path, save_file):
+        '''
+        Fetch the configuration of all the blocks and return conf with
+        updated storageObject info and its related target configuraion of
+        given storage object path
+        '''
+        current = self.dump()
+
+        try:
+            with open(save_file, "r") as f:
+                saveconf = json.loads(f.read())
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                saveconf = {'storage_objects': [], 'targets': []}
+            else:
+                raise ExecutionError("Could not open %s" % save_file)
+
+        fetch_cur_so = False
+        fetch_cur_tg = False
+        # Get the given block current storageObj configuration
+        for sidx, sobj in enumerate(current.get('storage_objects', [])):
+            if '/backstores/' + sobj['plugin'] + '/' + sobj['name'] == so_path:
+                current_so = current['storage_objects'][sidx]
+                fetch_cur_so = True
+                break
+
+        # Get the given block current target configuration
+        if fetch_cur_so:
+            for tidx, tobj in enumerate(current.get('targets', [])):
+                if fetch_cur_tg:
+                    break
+                for luns in tobj.get('tpgs', []):
+                    if fetch_cur_tg:
+                        break
+                    for lun in luns.get('luns', []):
+                        if lun['storage_object'] == so_path:
+                            current_tg = current['targets'][tidx]
+                            fetch_cur_tg = True
+                            break
+
+        fetch_sav_so = False
+        fetch_sav_tg = False
+        # Get the given block storageObj from saved configuration
+        for sidx, sobj in enumerate(saveconf.get('storage_objects', [])):
+            if '/backstores/' + sobj['plugin'] + '/' + sobj['name'] == so_path:
+                # Merge StorageObj
+                if fetch_cur_so:
+                    saveconf['storage_objects'][sidx] = current_so;
+                # Remove StorageObj
+                else:
+                    saveconf['storage_objects'].remove(saveconf['storage_objects'][sidx])
+                fetch_sav_so = True
+                break
+
+        # Get the given block target from saved configuration
+        if fetch_sav_so:
+            for tidx, tobj in enumerate(saveconf.get('targets', [])):
+                if fetch_sav_tg:
+                    break
+                for luns in tobj.get('tpgs', []):
+                    if fetch_sav_tg:
+                        break
+                    for lun in luns.get('luns', []):
+                        if lun['storage_object'] == so_path:
+                            # Merge target
+                            if fetch_cur_tg:
+                                saveconf['targets'][tidx] = current_tg;
+                            # Remove target
+                            else:
+                                saveconf['targets'].remove(saveconf['targets'][tidx])
+                            fetch_sav_tg = True
+                            break
+
+        # Insert storageObj
+        if fetch_cur_so and not fetch_sav_so:
+            saveconf['storage_objects'].append(current_so)
+        # Insert target
+        if fetch_cur_tg and not fetch_sav_tg:
+            saveconf['targets'].append(current_tg)
+
+        return saveconf
+
     # RTSRoot public stuff
 
     def dump(self):
@@ -178,6 +289,11 @@ class RTSRoot(CFSNode):
             fm.clear_discovery_auth_settings()
         for so in self.storage_objects:
             so.delete()
+
+        # If somehow some hbas still exist (no storage object within?) clean
+        # them up too.
+        for hba_dir in glob.glob("%s/core/*_*" % self.configfs_dir):
+            os.rmdir(hba_dir)
 
     def restore(self, config, clear_existing=False, abort_on_error=False):
         '''
@@ -257,7 +373,7 @@ class RTSRoot(CFSNode):
 
         return errors
 
-    def save_to_file(self, save_file=None):
+    def save_to_file(self, save_file=None, so_path=None):
         '''
         Write the configuration in json format to a file.
         Save file defaults to '/etc/targets/saveconfig.json'.
@@ -265,9 +381,14 @@ class RTSRoot(CFSNode):
         if not save_file:
             save_file = default_save_file
 
+        if so_path:
+            saveconf = self._get_saveconf(so_path, save_file)
+        else:
+            saveconf = self.dump()
+
         with open(save_file+".temp", "w+") as f:
             os.fchmod(f.fileno(), stat.S_IRUSR | stat.S_IWUSR)
-            f.write(json.dumps(self.dump(), sort_keys=True, indent=2))
+            f.write(json.dumps(saveconf, sort_keys=True, indent=2))
             f.write("\n")
             f.flush()
             os.fsync(f.fileno())
@@ -320,6 +441,8 @@ class RTSRoot(CFSNode):
             doc="Get the list of all FabricModule objects.")
     alua_tpgs = property(_list_alua_tpgs,
             doc="Get the list of all ALUA TPG objects.")
+    dbroot = property(_get_dbroot,
+            doc="Get the target database root")
 
 def _test():
     '''Run the doctests.'''

@@ -1,0 +1,64 @@
+From 5626a4d593df9384fff5129e7bdb6c909f5f2b11 Mon Sep 17 00:00:00 2001
+From: Maurizio Lombardi <mlombard@redhat.com>
+Date: Fri, 8 Feb 2019 14:36:34 +0100
+Subject: [PATCH] save_to_file() function breaks symbolic link when saving
+ configuration
+
+Currently the location of the targetcli configuration file is not
+configurable (saveconfig.json). The location is : /etc/target
+Some users use stateless VMs, with just a persistent device
+mounted under /var/lib/diskless.
+
+In order to circumvent the non configurable location of
+saveconfig.json, they create a symbolic link in /etc/target
+pointing to /var/lib/diskless
+
+Unfortunately, the rtslib save_to_file() function breaks
+this symbolic link and creates a new regular file in place of it,
+due to the creation of a saveconfig.json.temp file which is
+then renamed to saveconfig.json using the os.rename() function.
+
+This patch replace os.rename() with shutil.copyfile() + os.remove(),
+using copyfile() instead of rename() will preserve the symbolic link
+
+Signed-off-by: Maurizio Lombardi <mlombard@redhat.com>
+---
+ rtslib/root.py | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/rtslib/root.py b/rtslib/root.py
+index 5c0a98c..c93e65b 100644
+--- a/rtslib/root.py
++++ b/rtslib/root.py
+@@ -23,6 +23,7 @@ import stat
+ import json
+ import glob
+ import errno
++import shutil
+ 
+ from .node import CFSNode
+ from .target import Target
+@@ -386,7 +387,9 @@ class RTSRoot(CFSNode):
+         else:
+             saveconf = self.dump()
+ 
+-        with open(save_file+".temp", "w+") as f:
++        tmp_file = save_file + ".temp"
++
++        with open(tmp_file, "w+") as f:
+             os.fchmod(f.fileno(), stat.S_IRUSR | stat.S_IWUSR)
+             f.write(json.dumps(saveconf, sort_keys=True, indent=2))
+             f.write("\n")
+@@ -394,7 +397,8 @@ class RTSRoot(CFSNode):
+             os.fsync(f.fileno())
+             f.close()
+ 
+-        os.rename(save_file+".temp", save_file)
++        shutil.copyfile(tmp_file, save_file)
++        os.remove(tmp_file)
+ 
+     def restore_from_file(self, restore_file=None, clear_existing=True, abort_on_error=False):
+         '''
+-- 
+2.21.0
+

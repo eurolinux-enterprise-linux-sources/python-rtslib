@@ -8,17 +8,15 @@ Name:           python-rtslib
 License:        ASL 2.0
 Group:          System Environment/Libraries
 Summary:        API for Linux kernel LIO SCSI target
-Version:        2.1.fb63
-Release:        5%{?dist}
+Version:        2.1.fb69
+Release:        3%{?dist}
 URL:            https://fedorahosted.org/targetcli-fb/
 Source:         https://fedorahosted.org/released/targetcli-fb/%{oname}-%{version}.tar.gz
 Source1:        target.service
 Patch0:         0001-Turn-off-unsupported-fabrics.patch
 Patch1:         0002-Fix-comparisons-to-None.patch
-Patch2:         0003-Fix-exception-in-convert_scsi_hctl_to_path.patch
-Patch3:         0004-Support-Reconfiguration-of-device-path.patch
-Patch4:         0005-Remove-hba-only-directories-in-clear_existing.patch
-Patch5:         0006-create-remove-stale-hba-only-dir.patch
+Patch2:         0003-report-the-correct-size-for-partitions.patch
+Patch3:         0004-save_to_file-function-breaks-symbolic-link-when-savi.patch
 BuildArch:      noarch
 BuildRequires:  python-devel epydoc python-setuptools systemd-units python-six python-pyudev
 Requires:       python-kmod python-six python-pyudev
@@ -59,8 +57,6 @@ API for generic Linux SCSI kernel target.
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
-%patch4 -p1
-%patch5 -p1
 
 %if 0%{?with_python3}
 rm -rf %{py3dir}
@@ -134,6 +130,40 @@ popd
 %doc doc/html
 
 %changelog
+* Tue May 14 2019 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb69-3
+- save_to_file() function breaks symbolic link when saving configuration
+
+* Thu Feb 14 2019 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb69-2
+- report the correct size for partitions
+
+* Tue Jan 29 2019 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb69-1
+- Rebase rtslib to upstream version 2.1.fb69
+
+* Wed Aug 08 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-13
+- respin a new release to avoid problems with TPS tests
+
+* Mon Jun 04 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-12
+- saveconfig: way to block-level save with delete command
+
+* Tue Apr 24 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-11
+- Fix a failure in absence of save file
+
+* Thu Apr 19 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-10
+- Add missing patch "tcmu: add control constructor arg"
+
+* Fri Apr 13 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-9
+- Support tcmu hw max sectors
+- saveconfig: dump control string containing control=value tuples
+
+* Wed Apr 11 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-8
+- Fix ALUA tpg config setup
+
+* Tue Apr 10 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-7
+- Introduce support to saveconfig at the storage object level
+
+* Tue Mar 27 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-6
+- enable alua for pscsi/tcmu if kernel reports support 
+
 * Mon Feb 26 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-5
 - rtslib never creates hba directories without a storage object within it,
   but if under some circumstance these existed then we should remove them.
@@ -141,7 +171,7 @@ popd
 * Wed Feb 21 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-4
 - Allow users to pass in a string into the attributes.
 
-* Wed Nov 02 2017 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-3
+* Thu Nov 02 2017 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-3
 - Enabled qla2xxx target support to fix #1327710
 
 * Wed May 17 2017 Andy Grover <agrover@redhat.com> - 2.1.fb63-2
