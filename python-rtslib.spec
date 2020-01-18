@@ -9,7 +9,7 @@ License:        ASL 2.0
 Group:          System Environment/Libraries
 Summary:        API for Linux kernel LIO SCSI target
 Version:        2.1.fb63
-Release:        11%{?dist}
+Release:        12%{?dist}
 URL:            https://fedorahosted.org/targetcli-fb/
 Source:         https://fedorahosted.org/released/targetcli-fb/%{oname}-%{version}.tar.gz
 Source1:        target.service
@@ -26,6 +26,9 @@ Patch9:         0010-Support-tcmu-hw-max-sectors.patch
 Patch10:        0011-saveconfig-dump-control-string-containing-control-va.patch
 Patch11:        0012-tcmu-add-control-constructor-arg.patch
 Patch12:        0013-saveconfig-fix-failure-in-absence-of-save-file.patch
+Patch13:        0014-saveconfig-handle-no-attr-exception-in-_parse_info.patch
+Patch14:        0015-saveconfig-fix-missing-import.patch
+Patch15:        0016-saveconfig-way-for-block-level-save-with-delete-comm.patch
 BuildArch:      noarch
 BuildRequires:  python-devel epydoc python-setuptools systemd-units python-six python-pyudev
 Requires:       python-kmod python-six python-pyudev
@@ -75,6 +78,9 @@ API for generic Linux SCSI kernel target.
 %patch10 -p1
 %patch11 -p1
 %patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
 
 %if 0%{?with_python3}
 rm -rf %{py3dir}
@@ -148,6 +154,9 @@ popd
 %doc doc/html
 
 %changelog
+* Mon Jun 04 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-12
+- saveconfig: way to block-level save with delete command
+
 * Tue Apr 24 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-11
 - Fix a failure in absence of save file
 

@@ -1,0 +1,46 @@
+From 7213c27f03e5cbabb755da8e6cbe39c75c68c351 Mon Sep 17 00:00:00 2001
+From: Prasanna Kumar Kalever <prasanna.kalever@redhat.com>
+Date: Fri, 1 Jun 2018 15:18:18 +0530
+Subject: [PATCH] saveconfig: way for block-level save with delete command
+
+currently, we can use block-level save feature for create command and
+reconfig of different attributes, but there is no way to use block-level
+feature for delete command.
+
+This patch introduces 'save' flag (False on default), which can trigger
+saveconfig internally as part of delete command.
+
+$ targetcli /backstores/user:glfs delete test save=True
+Deleted storage object test.
+
+Signed-off-by: Prasanna Kumar Kalever <prasanna.kalever@redhat.com>
+---
+ rtslib/tcm.py | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/rtslib/tcm.py b/rtslib/tcm.py
+index 4ed96b4..58952d6 100644
+--- a/rtslib/tcm.py
++++ b/rtslib/tcm.py
+@@ -251,7 +251,7 @@ class StorageObject(CFSNode):
+ 
+     # StorageObject public stuff
+ 
+-    def delete(self):
++    def delete(self, save=False):
+         '''
+         Recursively deletes a StorageObject object.
+         This will delete all attached LUNs currently using the StorageObject
+@@ -274,6 +274,9 @@ class StorageObject(CFSNode):
+ 
+         super(StorageObject, self).delete()
+         self._backstore.delete()
++        if save:
++            from .root import RTSRoot, default_save_file
++            RTSRoot().save_to_file(default_save_file, '/backstores/' + self.plugin  + '/' + self._name)
+ 
+     def is_configured(self):
+         '''
+-- 
+1.8.3.1
+
