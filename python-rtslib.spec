@@ -9,7 +9,7 @@ License:        ASL 2.0
 Group:          System Environment/Libraries
 Summary:        API for Linux kernel LIO SCSI target
 Version:        2.1.fb63
-Release:        12%{?dist}
+Release:        13%{?dist}
 URL:            https://fedorahosted.org/targetcli-fb/
 Source:         https://fedorahosted.org/released/targetcli-fb/%{oname}-%{version}.tar.gz
 Source1:        target.service
@@ -154,6 +154,9 @@ popd
 %doc doc/html
 
 %changelog
+* Wed Aug 08 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-13
+- respin a new release to avoid problems with TPS tests
+
 * Mon Jun 04 2018 Maurizio Lombardi <mlombard@redhat.com> - 2.1.fb63-12
 - saveconfig: way to block-level save with delete command
 
